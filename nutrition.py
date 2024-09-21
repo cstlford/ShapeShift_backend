@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 import enum
 from typing import Dict,Any
-
+from gemini_api import generate
 app = Flask(__name__)
 
 class Goal(enum.Enum):
@@ -162,6 +162,7 @@ def get_nutrition_plan(data):
             goal = Goal[data['goal'].upper()]
             diet_type = DietType[data['diet_type'].upper()]
             activity_level = ActivityLevel[data['activity_level'].upper()]
+            #returns dictionary with calories and macros 
             plan = nutrition_plan(
                 weight_lbs, height_inches, age, is_male, goal, diet_type,
                 activity_level
@@ -171,7 +172,8 @@ def get_nutrition_plan(data):
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
         
-        return jsonify(plan)
+        #returns LLM output based on 'plan' (macros and calories)
+        return generate(plan)
 
 
 if __name__ == '__main__':
