@@ -152,7 +152,7 @@ def nutrition_plan(
     }
 
 @app.route('/nutrition_plan', methods=['POST'])
-def get_nutrition_plan(data):
+def get_nutrition_plan():
         data = request.json
         try:
             weight_lbs = float(data['weight_lbs'])
