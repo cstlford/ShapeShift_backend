@@ -31,9 +31,12 @@ def generate():
 
 generation_config = {
     "max_output_tokens": 8192,
+    #degree of randomness in token selection
     "temperature": 1,
-    "top_p": 0.95,
-    "top_k": 1
+    #Tokens are selected from the most (see top-K) to least probable until the sum of their probabilities equals the top-P value
+    "top_p": 0.1,
+    #Specify a lower value for less random responses
+    "top_k": 2
 }
 
 safety_settings = [
