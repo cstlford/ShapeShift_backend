@@ -1,20 +1,43 @@
 import vertexai
 from vertexai.generative_models import GenerativeModel, SafetySetting
 
-def generate():
+def generate(data=None):
     vertexai.init(project="golden-context-430621-t6", location="us-central1")
     model = GenerativeModel("gemini-1.5-flash-001")
 
+
+    #calories
+    calories = data['target_calories']
+
+    #macros
+    carbs = data['macros']['carbs']
+    fat = data['macros']['fat']
+    protein = data['macros']['protein']
+
     # Provide some content for the model to generate responses based on
     contents = [
-                        """
+                        f"""
                                     System Message:
-                                    Tell me a great story
 
+                                    You are a capable nutrition model being utilized in an API that takes in
+                                    the amount of calories a user needs to eat and the macronutrients needed for one day.
 
+                                    Generate a mealplan for 7 days for a user that needs to eat {calories} calories in a day with the following macros: 
+                                    {carbs} grams of carbs,
+                                    {fat} grams of fat,
+                                    {protein} grams protein.
+
+                                    The mealplan will have three meals a day that will list the foods with measurements in grams. 
+
+                                    Each food item in each meal will have the calories and macros listed.
+
+                                    Each meal will have the calories and macros listed, as well as a designation (such as breakfast, lunch, and dinner).
+
+                                    The foods will be healthy, nutrient dense foods.
 
 
                         """
+                    
     ]
 
     responses = model.generate_content(
@@ -36,7 +59,7 @@ generation_config = {
     #Tokens are selected from the most (see top-K) to least probable until the sum of their probabilities equals the top-P value
     "top_p": 0.1,
     #Specify a lower value for less random responses
-    "top_k": 2
+    "top_k": 1
 }
 
 safety_settings = [
