@@ -173,6 +173,8 @@ def get_nutrition_plan(data):
         
         return plan
 
+
+#note, these will not be included in final. Frontend will send over preconverted, metric values
 def inches_to_cm(inches):
     return inches * 2.54
 
