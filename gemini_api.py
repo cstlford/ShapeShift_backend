@@ -69,6 +69,27 @@ def generate(data=None):
                                     ### Changes <br>
                                     - <insert change here> <br>
                                     The input is: \n
+                        """,
+                        f"""
+                                    You are a nutritionist tasked with generating a meal plan. Based on the user details below, create a daily meal plan.
+
+                                    User details:
+                                    - Total daily calories: {calories}
+                                    - Target macronutrient split: 
+                                    - Protein: {protein}
+                                    - Carbs: {carbs}
+                                    - Fat: {fat}
+                                    - Diet: Omnivore
+                                    - Preferences: Likes Italian food, dislikes shellfish
+                                    - Number of meals per day: 3
+                                    - Number of days: 7
+
+                                    For each meal in the day, include the following:
+                                    - Title of the meal
+                                    - Ingredients with their calories and macronutrient breakdown (protein, carbs, fat) per ingredient
+                                    - Directions on how to prepare the meal
+
+                                    Ensure that the total calories and macronutrients for the day match the user's goals. Use common ingredients and keep the preparation simple.
                         """
     ]
 
