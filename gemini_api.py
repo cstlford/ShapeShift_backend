@@ -1,5 +1,5 @@
 import vertexai
-from vertexai.generative_models import GenerativeModel, SafetySetting
+from vertexai.generative_models import GenerativeModel, SafetySetting, Tool, grounding
 
 def generate(data=None):
     vertexai.init(project="golden-context-430621-t6", location="us-central1")
@@ -22,7 +22,7 @@ def generate(data=None):
     ## Fourth Generation - Randomness is kept low, model proofreads the last output
 
     ##FIX ME - add contents for each generation
-    contents = [
+    prompts = [
                         f"""
                                     System Message:
 
@@ -41,33 +41,19 @@ def generate(data=None):
                                     Each meal will have the calories and macros listed, as well as a designation (such as breakfast, lunch, and dinner).
 
                                     The foods will be healthy, nutrient dense foods.
-
-
                         """,
 
-                        f"""
-                                    System Message:
-
-                                    You are a capable nutrition model being utilized in an API that takes in
-                                    the amount of calories a user needs to eat and the macronutrients needed for one day.
-
-                                    You are reviewing an already complete meal plan for accuracy. 
-                                    For each meal, assess the quantity (grams) of each food item and ensure the calorie and macro calculations are correct This is of the utmost priority.
-                                    If adjustments are needed, replace the incorrect values with the correct values in the output.
-                                    Include ingredients for any food item that does not constitute of a single food
-                                    Return the output as follows, where the text in <> is what need to be adjusted, and there is <br> inserted after each header of each level and each bullet point.:
+                        f"""        You are a peer review agent adjusting the format of the input.
+                                    Return the output as follows, where the text in <> is what need to be adjusted, and there is <br> inserted after each header of each level and each bullet point:
+                                    If the food has more than one ingredient, list the ingredients below the food.
                                     # <insert day here> <br>
                                     ## <insert meal here> <br>
                                     ### <Insert food item here with grams ()> <br>
-                                     - macro information <br>
-                                     - calorie information <br>
-                                     -- ingredient <br>
-                                     -- ingredient <br>
+                                    - <macro information> <br>
+                                    - <calorie information> <br>
+                                      - <ingredient> <br> 
+                                      - <ingredient> <br>
                                     
-                                    After returning the output with the formatting described above, give a breakdown of the changes you made between the input and output, including the changes you made to the nutritional info.
-                                    The breakdown should be an ordered list of changes you made under the heading (level 3) 'Changes'. Here is an example:
-                                    ### Changes <br>
-                                    - <insert change here> <br>
                                     The input is: \n
                         """,
                         f"""
@@ -94,13 +80,12 @@ def generate(data=None):
     ]
 
 
-    
-
     ##FIX ME - add 4 generation cycles according to specifications above 
 
+    '''
     #generates first response
     responses = model.generate_content(
-        contents[0],
+        contents[2],
         generation_config=generation_config,
         safety_settings=safety_settings,
         stream=True,
@@ -125,7 +110,31 @@ def generate(data=None):
         response_to_return += response.text
     return response_to_return
 
-##FIX ME - add generation config block with higher random value
+    '''
+
+    # Use Google Search for grounding
+    tool = Tool.from_google_search_retrieval(grounding.GoogleSearchRetrieval())
+
+    prompt = prompts[0]
+    response = model.generate_content(
+        prompt,
+        tools=[tool],
+        generation_config= generation_config
+    )
+
+
+    checked_response = model.generate_content(
+        prompts[1] + response.text,
+        generation_config=generation_config,
+        safety_settings=safety_settings,
+        stream=False,
+    )
+
+    return checked_response.text
+
+
+
+##FIX ME - add generation config block with higher random value to be used for food selection
 generation_config = {
     "max_output_tokens": 8192,
     #degree of randomness in token selection
