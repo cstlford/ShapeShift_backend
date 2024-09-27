@@ -1,6 +1,5 @@
 import vertexai
-from vertexai.generative_models import GenerativeModel, SafetySetting, Tool, grounding
-
+from vertexai.generative_models import GenerativeModel, SafetySetting, Tool
 def generate(data=None):
     vertexai.init(project="golden-context-430621-t6", location="us-central1")
     model = GenerativeModel("gemini-1.5-flash-001")

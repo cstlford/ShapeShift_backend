@@ -2,7 +2,10 @@ import vertexai
 from vertexai.generative_models import GenerativeModel, ChatSession
 import os
 
-def generate_vertex_repsonse(user_input):
+# If grounding import is giving issues try pip install --upgrade google-cloud-aiplatform
+
+
+def generate_vertex_repsonse(user_input = "Whats the current news"):
 
     from vertexai.generative_models import (
         GenerationConfig,
@@ -48,3 +51,4 @@ def generate_vertex_repsonse(user_input):
     )
     return response.text.strip().split("\n")
 
+print(generate_vertex_repsonse())
