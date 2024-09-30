@@ -1,0 +1,3 @@
+[submodule "gemini_backend_deployment_for_shapeshift"]
+	path = gemini_backend_deployment_for_shapeshift
+	url = https://github.com/austinsarwar/gemini_backend_for_shapeshift
