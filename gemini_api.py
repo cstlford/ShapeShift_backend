@@ -1,164 +1,204 @@
 import vertexai
-from vertexai.generative_models import GenerativeModel, SafetySetting, Tool
+from vertexai.preview.generative_models import GenerativeModel, Tool, grounding, SafetySetting
+import google.generativeai as genai
+import os
+
+from food_db import search_food_db
+from websearch_cheap import search
+
+genai.configure(api_key=os.environ["API_KEY"])
+
+gemini = genai.GenerativeModel("gemini-1.5-flash")
+
+
+
 def generate(data=None):
+
+    # Select model
     vertexai.init(project="golden-context-430621-t6", location="us-central1")
-    model = GenerativeModel("gemini-1.5-flash-001")
+    vertex = GenerativeModel("gemini-1.5-flash-001") #used for more accurate responses that need grounding
 
+    genai.configure(api_key=os.environ["API_KEY"])
+    gemini = genai.GenerativeModel("gemini-1.5-flash") #used to make more than 5 calls per minute
 
-    #calories
+    
+    # Initialize grounding tool, uses datastore in Cloud Code
+    tool = Tool.from_retrieval(
+    grounding.Retrieval(
+        grounding.VertexAISearch(
+            datastore='nutrition-information_1727548015090',
+            project='golden-context-430621-t6',
+            location='global',
+        )
+    )
+    )
+
+    # Initialize grounding tool, uses Google Search Results
+    tool2 = Tool.from_google_search_retrieval(grounding.GoogleSearchRetrieval())
+
+    # Configure Generation settings
+    generation_config = {
+        "max_output_tokens": 8192,
+
+        #degree of randomness in token selection
+        "temperature": 1,
+
+        #Tokens are selected from the most (see top-K) to least probable until the sum of their probabilities equals the top-P value
+        "top_p": 0.1,
+
+        #Specify a lower value for less random responses
+        "top_k": 1
+    }
+
+    # Configure safety settings
+    safety_settings = [
+        SafetySetting(
+            category=SafetySetting.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold=SafetySetting.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
+        ),
+        SafetySetting(
+            category=SafetySetting.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold=SafetySetting.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
+        ),
+        SafetySetting(
+            category=SafetySetting.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold=SafetySetting.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
+        ),
+        SafetySetting(
+            category=SafetySetting.HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold=SafetySetting.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
+        ),
+    ]
+
+    # Gather nutritional info
+
+    ##  calories
     calories = data['target_calories']
 
-    #macros
+    ##  macros
     carbs = data['macros']['carbs']
     fat = data['macros']['fat']
     protein = data['macros']['protein']
 
-    # -- TO DO -- #
-    #Multi-generation:
-    ## First Generation - Randomness is high for model that provides food choices (RAG not needed)
-    ## Second Generation - Randomness is decreased for determining the macronutrients/calories needed for each food (RAG Needed) 
-    ## Third Generation - Randomness is kept low, model determines which brands to use based off of store preference (RAG Needed)
-    ## Fourth Generation - Randomness is kept low, model proofreads the last output
-
-    ##FIX ME - add contents for each generation
-    prompts = [
+    ##  diet type
+    diet_type = data['diet_type']
+   
+    prompts = [         
                         f"""
-                                    System Message:
+                            Please come up with a list of 30 healthy foods to be used in {diet_type} diet.
+                            The foods should be fairly common and simple. 
+                            Return the output as a comma seperated list of foods and nothing else. 
+                            Please make the foods specific, it should ideally be one word.
 
-                                    You are a capable nutrition model being utilized in an API that takes in
-                                    the amount of calories a user needs to eat and the macronutrients needed for one day.
-
-                                    Generate a mealplan for 7 days for a user that needs to eat {calories} calories in a day with the following macros: 
-                                    {carbs} grams of carbs,
-                                    {fat} grams of fat,
-                                    {protein} grams protein.
-
-                                    The mealplan will have three meals a day that will list the foods with measurements in grams. 
-
-                                    Each food item in each meal will have the calories and macros listed.
-
-                                    Each meal will have the calories and macros listed, as well as a designation (such as breakfast, lunch, and dinner).
-
-                                    The foods will be healthy, nutrient dense foods.
                         """,
-
-                        f"""        You are a peer review agent adjusting the format of the input.
-                                    Return the output as follows, where the text in <> is what need to be adjusted, and there is <br> inserted after each header of each level and each bullet point:
-                                    If the food has more than one ingredient, list the ingredients below the food.
-                                    # <insert day here> <br>
-                                    ## <insert meal here> <br>
-                                    ### <Insert food item here with grams ()> <br>
-                                    - <macro information> <br>
-                                    - <calorie information> <br>
-                                      - <ingredient> <br> 
-                                      - <ingredient> <br>
-                                    
-                                    The input is: \n
-                        """,
-                        f"""
-                                    You are a nutritionist tasked with generating a meal plan. Based on the user details below, create a daily meal plan.
-
-                                    User details:
-                                    - Total daily calories: {calories}
-                                    - Target macronutrient split: 
-                                    - Protein: {protein}
-                                    - Carbs: {carbs}
-                                    - Fat: {fat}
-                                    - Diet: Omnivore
-                                    - Preferences: Likes Italian food, dislikes shellfish
-                                    - Number of meals per day: 3
-                                    - Number of days: 7
-
-                                    For each meal in the day, include the following:
-                                    - Title of the meal
-                                    - Ingredients with their calories and macronutrient breakdown (protein, carbs, fat) per ingredient
-                                    - Directions on how to prepare the meal
-
-                                    Ensure that the total calories and macronutrients for the day match the user's goals. Use common ingredients and keep the preparation simple.
                         """
+                                        Please return the best variation of the following foods to be used in a mealplan.
+                                        Your output should only contain the best variation.
+                                        Example output:
+                                            (3042, 'Beef, raw, 90% lean meat / 10% fat, ground', '100 g', 176, '10g', '20.00 g', '0.00 g')
+                                        Do not include newlines in your output.\n
+                        """,
+                        """
+                        Please return the nutritional information for the following food, using the following search results.
+                        Example output:
+                            (Null, ,<insert name of food>, <serving size>, <calories>, <fat>, <protein>, <carbs>)\n
+                        """,
+                        f"""
+                        Using the following foods and their nutritional values, please construct a 1 day meal plan,
+                            {calories} calories, {fat} grams of fat, {protein} grams of protein, and {carbs} grams of carbs eaten each day using the foods provided.
+                            The following foods are formatted in this way:
+                                (<ID>, <Name>, <Serving size>, <calories>, <fat>, <protein>, <carbs>)
+                            The meal plan doesnt need to include the ID or the entire name
+                            Feel free to adjust the serving size to fulfill the nutritional goals
+                            It is of utmost importance that the provided food's nutritional facts add up to match the daily requirement supplied earlier
+                        """,
+                        f"""
+                            Do the the provided food's nutritional facts add up to match the daily requirements supplied? 
+                            If not:
+                            1) Please make corrections accordingly to ensure that this mealplan meets the daily requirements in a sensible manner
+                            2) Return the adjusted mealplan in the same format\n
+                        """,
+
+
     ]
+    
+    # Get list of foods to be used
+    prompt = prompts
+    response = vertex.generate_content(
+        prompt[0],
+        generation_config= generation_config,
+        safety_settings = safety_settings,
+        stream=False
+    )
+
+    # Split foods into array
+    foods = response.text.split(", ")
+    print(foods)
+    final_food_data = ''
+
+    #For each food, get nutritional information
+    for food in foods:
+        ## search DB for food
+        food_data_array = search_food_db(food)
+        food_data_string = "\n".join(str(x) for x in food_data_array)
+
+        ## if DB does not have food, search on web 
+        ## FIX ME: Improve Web Scraping
+        if len(food_data_string) == 0:
+            continue
+            ##prompt = prompts[2] + f"Food = {food}\n"
+            ##food_data_string = search("Macros and calories of"+food)
+        else:
+            prompt = prompts[1]
+
+        ## prompts Geminin to choose best food to use from provided data (db or web)
+        food_choice = gemini.generate_content(
+            prompt + food_data_string,
+            generation_config= generation_config,
+            stream=False
+        )
+        
+        ## formatting for debug output
+        final_food_data += food_choice.text+'<br>'
+    
+    # Craft Mealplan 
+    prompt = prompts[3]
+    meal_plan = vertex.generate_content(
+            prompt + final_food_data,
+            generation_config= generation_config,
+            stream=False
+        )
+
+    # Check mealplan
+    prompt = prompts[4]
+    refined_meal_plan = vertex.generate_content(
+            prompt + meal_plan.text,
+            generation_config= generation_config,
+            stream=False
+        )
+    return refined_meal_plan.text
 
 
-    ##FIX ME - add 4 generation cycles according to specifications above 
+
+    # **Used for troubleshooting web search**
 
     '''
-    #generates first response
-    responses = model.generate_content(
-        contents[2],
-        generation_config=generation_config,
-        safety_settings=safety_settings,
-        stream=True,
-    )
+    ## Isolated Web Test ##
+    food = 'Quinoa'
+    final_food_data = ''
 
-    #compiles first response (can probably eliminate)
-    first_response = ""
-    for response in responses:
-        first_response += response.text
+    prompt = prompts[2] + f"Food = {food}\n"
+    food_data_string = search("Macros and calories of"+food)
 
-    #peer reviews first response
-    betterresponses = model.generate_content(
-        contents[1] + first_response,
-        generation_config=generation_config,
-        safety_settings=safety_settings,
-        stream=True,
-    )
+    response = model2.generate_content(
+            prompt + food_data_string,
+            generation_config= generation_config,
+            stream=False
+        )
+    
+    final_food_data += response.text+'<br>'
 
-    #compiles second response (can probably eliminate)
-    response_to_return = ""
-    for response in betterresponses:
-        response_to_return += response.text
-    return response_to_return
 
+    return final_food_data
     '''
 
-    # Use Google Search for grounding
-    tool = Tool.from_google_search_retrieval(grounding.GoogleSearchRetrieval())
-
-    prompt = prompts[0]
-    response = model.generate_content(
-        prompt,
-        tools=[tool],
-        generation_config= generation_config
-    )
-
-
-    checked_response = model.generate_content(
-        prompts[1] + response.text,
-        generation_config=generation_config,
-        safety_settings=safety_settings,
-        stream=False,
-    )
-
-    return checked_response.text
-
-
-
-##FIX ME - add generation config block with higher random value to be used for food selection
-generation_config = {
-    "max_output_tokens": 8192,
-    #degree of randomness in token selection
-    "temperature": 1,
-    #Tokens are selected from the most (see top-K) to least probable until the sum of their probabilities equals the top-P value
-    "top_p": 0.1,
-    #Specify a lower value for less random responses
-    "top_k": 1
-}
-
-safety_settings = [
-    SafetySetting(
-        category=SafetySetting.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-        threshold=SafetySetting.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
-    ),
-    SafetySetting(
-        category=SafetySetting.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-        threshold=SafetySetting.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
-    ),
-    SafetySetting(
-        category=SafetySetting.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-        threshold=SafetySetting.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
-    ),
-    SafetySetting(
-        category=SafetySetting.HarmCategory.HARM_CATEGORY_HARASSMENT,
-        threshold=SafetySetting.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
-    ),
-]

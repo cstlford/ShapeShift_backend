@@ -154,7 +154,8 @@ def nutrition_plan(weight: float, height: float, age:int, is_male:bool, goal:Goa
 
     return{
         "target_calories": round(target_calories),
-        "macros": macros
+        "macros": macros,
+        "diet_type": diet_type
     }
 
 def get_nutrition_plan(data):
@@ -170,7 +171,7 @@ def get_nutrition_plan(data):
             activity_level
         )
       
-        
+        #returns target calories, macros, diet type
         return plan
 
 
