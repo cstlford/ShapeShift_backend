@@ -1,6 +1,7 @@
 from flask import Flask, jsonify
-from gemini_api import generate
+#from gemini_api import generate
 import nutrition_functions as nf
+from openai_api import generate
 
 app = Flask(__name__)
 

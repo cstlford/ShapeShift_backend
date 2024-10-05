@@ -21,6 +21,7 @@ def generate(data=None):
     genai.configure(api_key=os.environ["API_KEY"])
     gemini = genai.GenerativeModel("gemini-1.5-flash") #used to make more than 5 calls per minute
 
+
     
     # Initialize grounding tool, uses datastore in Cloud Code
     tool = Tool.from_retrieval(
@@ -177,6 +178,7 @@ def generate(data=None):
             stream=False
         )
     return refined_meal_plan.text
+
 
 
 
