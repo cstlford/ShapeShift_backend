@@ -20,6 +20,7 @@ class DietType(enum.Enum):
     VEGAN = 4
     VEGETARIAN = 5
 
+
 def calculate_bmr(weight: float, height: float, age: int, is_male: bool) -> float:
     '''Calculates and returns basal metabolic rate given weight(kg), height(cm), age, and sex.'''
     if is_male:
@@ -146,7 +147,7 @@ def calculate_macros_vegan(target_calories: float, goal: Goal, weight: float) ->
         "carbs": f'{round(carbs)}g'
     }
 
-def nutrition_plan(weight: float, height: float, age:int, is_male:bool, goal:Goal, diet_type: DietType, activity_level: ActivityLevel) -> Dict[str,Any]:
+def nutrition_plan(weight: float, height: float, age:int, is_male:bool, goal:Goal, diet_type: DietType, activity_level: ActivityLevel, meal_number: int, preference_foods: str, avoid_foods:str) -> Dict[str,Any]:
     bmr = calculate_bmr(weight,height,age,is_male)
     tdee = calculate_tdee(bmr, activity_level.value)
     target_calories = calculate_target_calories(tdee, goal)
@@ -155,7 +156,10 @@ def nutrition_plan(weight: float, height: float, age:int, is_male:bool, goal:Goa
     return{
         "target_calories": round(target_calories),
         "macros": macros,
-        "diet_type": diet_type
+        "diet_type": diet_type.name,
+        "meal_number": meal_number,
+        "preferences": preference_foods,
+        "avoid": avoid_foods
     }
 
 def get_nutrition_plan(data):
@@ -166,12 +170,15 @@ def get_nutrition_plan(data):
         goal = Goal[data['goal'].upper()]
         diet_type = DietType[data['diet_type'].upper()]
         activity_level = ActivityLevel[data['activity_level'].upper()]
+        meal_number = int(data['meal_number'])
+        preference_foods = str(data['preferences'])
+        avoid_foods = str(data['avoid'])
         plan = nutrition_plan(
             weight, height, age, is_male, goal, diet_type,
-            activity_level
+            activity_level, meal_number, preference_foods, avoid_foods
         )
       
-        #returns target calories, macros, diet type
+        #returns target calories, macros, diet type, meal_number, preferences, avoids
         return plan
 
 

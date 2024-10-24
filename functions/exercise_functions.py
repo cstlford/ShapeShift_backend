@@ -95,6 +95,7 @@ class WorkoutPlanner:
         }
 
 # Example usage
+'''
 planner = WorkoutPlanner()
 workout = planner.plan_workout(total_time_minutes=60, goal="endurance")
 
@@ -103,3 +104,4 @@ print("Workout Plan:", workout["workout_plan"])
 print(f"Compound Time Used: {workout['compound_time_used']} seconds")
 print(f"Isolation Time Used: {workout['isolation_time_used']} seconds")
 print(f"Total Time Used: {workout['total_time_used']} seconds")
+'''

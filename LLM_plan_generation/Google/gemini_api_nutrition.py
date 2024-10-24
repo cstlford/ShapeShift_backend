@@ -3,8 +3,8 @@ from vertexai.preview.generative_models import GenerativeModel, Tool, grounding,
 import google.generativeai as genai
 import os
 
-from food_db import search_food_db
-from websearch_cheap import search
+from LLM_search_tools.food_db import search_food_db
+from LLM_search_tools.websearch_cheap import search
 
 genai.configure(api_key=os.environ["API_KEY"])
 
